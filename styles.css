@@ -68,7 +68,7 @@ body {
 .label-root {
   font-size: 0.75rem;
   color: var(--palette-text);
-  line-height: 1.2rem;
+  line-height: 1.4rem;
 }
 .anchor-root {
   color: var(--palette-primary-dark);
