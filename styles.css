@@ -115,3 +115,38 @@ button:disabled:hover {
   max-width: none;
   max-height: none;
 }
+
+.footer-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  justify-content: right;
+  overflow: auto;
+}
+
+.button-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.spacing-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .spacing-wrapper {
+    flex-direction: column;
+    align-items: start;
+    justify-content: left;
+  }
+
+  .footer-wrapper {
+    justify-content: space-between;
+    align-items: start;
+  }
+}
