@@ -195,22 +195,25 @@ function assignSyllableId(word, imagesBasePath) {
     let syllableId = 0;
     const resultSyllables = [];
 
+    const flushCurrentSyllable = () => {
+      if (currentSyllableGlyphs.length > 0) {
+        resultSyllables.push(
+          new Syllable({
+            glyphs: [...currentSyllableGlyphs],
+            syllableId: syllableId++,
+          })
+        );
+        currentSyllableGlyphs = [];
+      }
+    };
+
     for (let i = 0; i < combindedGlyphs.length; i++) {
       const current = combindedGlyphs[i];
       const prev = combindedGlyphs[i - 1];
 
-      // Handle non-letter characters (punctuation, numbers etc)
+      // 비-문자 글립스 처리
       if (!current.isLetter) {
-        if (currentSyllableGlyphs.length > 0) {
-          resultSyllables.push(
-            new Syllable({
-              glyphs: [...currentSyllableGlyphs],
-              syllableId: syllableId++,
-            })
-          );
-          currentSyllableGlyphs = [];
-        }
-
+        flushCurrentSyllable(); // 쌓인 것 밀어내고
         resultSyllables.push(
           new Syllable({
             glyphs: [current],
@@ -220,41 +223,26 @@ function assignSyllableId(word, imagesBasePath) {
         continue;
       }
 
-      if (i === 0 || prev?.isCombinedVowel) {
+      if (i === 0 || (prev && prev.isCombinedVowel)) {
         currentSyllableGlyphs.push(current);
       } else {
-        if (currentSyllableGlyphs.length > 0) {
-          resultSyllables.push(
-            new Syllable({
-              glyphs: [...currentSyllableGlyphs],
-              syllableId: syllableId++,
-            })
-          );
-        }
-        currentSyllableGlyphs = [current];
+        flushCurrentSyllable();
+        currentSyllableGlyphs.push(current);
       }
     }
-
-    if (currentSyllableGlyphs.length > 0) {
-      resultSyllables.push(
-        new Syllable({
-          glyphs: [...currentSyllableGlyphs],
-          syllableId: syllableId++,
-        })
-      );
-    }
+    flushCurrentSyllable();
     newSyllables = resultSyllables;
   }
 
+  //단어의 마지막 문자가 모음인 경우, 밑줄 처리 로직
+  //단어의 마지막 음절
   const lastSyllable = newSyllables[newSyllables.length - 1];
+  //마지막 음절의 마지막 글립스
   const lastGlyph = lastSyllable.glyphs[lastSyllable.glyphs.length - 1];
 
-  console.log("1");
-  console.log("lastSyllable is Letter?", lastGlyph.isLetter);
-  console.log("lastSyllable.glyphs.length", lastSyllable.glyphs.length);
+  console.log("newSyllables", newSyllables);
 
   if (lastGlyph.isVowel) {
-    console.log("2");
     lastSyllable.glyphs.push(
       new Glyph({
         char: "done",
@@ -262,22 +250,29 @@ function assignSyllableId(word, imagesBasePath) {
       })
     );
   }
-  //마지막 글립스가 문장부호인 경우, 마지막 문자를 찾아 모음 검사를 한다.
-  // 음... lastSyllable.glyphs.length > 1 이부분 조건문 바꿔야됨
-  else if (!lastGlyph.isLetter && lastSyllable.glyphs.length > 1) {
-    console.log("3");
-    console.log("lastSyllable", lastSyllable);
-    const lastLetterGlyph = lastSyllable.glyphs.find((glyph, index) => {
-      return glyph.isLetter && index < lastSyllable.glyphs.length - 1;
-    });
-    console.log("lastLetterGlyph", lastLetterGlyph);
-    if (lastLetterGlyph.isVowel) {
-      lastLetterGlyph.glyphs.push(
-        new Glyph({
-          char: "done",
-          imagePath: `${imagesBasePath}done.svg`,
-        })
-      );
+
+  //단어가 문장부호로 끝났을 경우의 추가 처리
+  else if (!lastGlyph.isLetter) {
+    //문장부호가 포함되지 않은, 진짜 마지막 글립스 찾기
+
+    const lastNonLetterSyllable = [...newSyllables]
+      .reverse()
+      .find((syllable) => syllable.glyphs[syllable.glyphs.length - 1].isLetter);
+
+    if (lastNonLetterSyllable) {
+      const lastNonLetterGlyph = lastNonLetterSyllable.glyphs
+        .slice()
+        .reverse()
+        .find((glyph) => glyph.isLetter);
+
+      if (lastNonLetterGlyph.isVowel) {
+        lastNonLetterSyllable.glyphs.push(
+          new Glyph({
+            char: "done",
+            imagePath: `${imagesBasePath}done.svg`,
+          })
+        );
+      }
     }
   }
   return newSyllables;
@@ -325,9 +320,6 @@ async function renderImages(text, ctx, canvas, imagesBasePath = "./images/") {
       (line.length - 1) * wordSpacing
   );
   const maxLineWidth = Math.max(...lineWidths);
-
-  console.log("lineWidths", lineWidths);
-  console.log("maxLineWidth", maxLineWidth);
 
   canvas.width = maxLineWidth + cPadding;
   canvas.height = charHeight + lineSpacing * (lines.length - 1) + cPadding;
